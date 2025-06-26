@@ -1,0 +1,19 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="home-container container">
+    <h3>Title => {{.Title}}</h3>
+    <h3>Path => "{{.Path}}"</h3>
+    
+    <div class="categories-list">
+        {{range .Categories}}
+            <div class="category-item">
+                <h4><a href="/category/{{.Slug}}">{{.Name}}</a></h4>
+                <p>{{.Description}}</p>
+            </div>
+        {{end}}
+    </div>
+    
+    <p><a href="/" class="link">To Home</a></p>
+</div>
+{{end}}

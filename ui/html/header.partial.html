@@ -3,15 +3,18 @@
     <div class="container">
         <h1>Forum</h1>
         {{if .CurrentUser}}
-            <h3>Username: {{.CurrentUser.Username}}</span>
+            <h3>Username: {{.CurrentUser.Username}}</h3>
             <form method="POST" action="/logout" style="display: inline;">
                 <a href="/" class="btn">Home</a>
+                <a href="/categories" class="btn">Categories</a>
                 <a href="/profile" class="btn">Profile</a>
                 <a href="/post/create" class="btn">Create Post</a>
                 <button type="submit" class="btn">Logout</button>
             </form>
         {{else}}
             <nav>
+                <a href="/" class="btn">Home</a>
+                <a href="/categories" class="btn">Categories</a>
                 <a href="/login" class="btn">Login</a>
                 <a href="/register" class="btn">Register</a>
             </nav>

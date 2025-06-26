@@ -25,6 +25,9 @@ func (app *app) routes() http.Handler {
 	mux.HandleFunc("/post/delete", app.requireAuth(app.deletePost))
 	mux.HandleFunc("/post/", app.handlePostRoutes)
 
+	mux.HandleFunc("/categories", app.categories)
+	mux.HandleFunc("/category/", app.handleCategoryRoutes)
+
 	return mux
 }
 
@@ -41,6 +44,19 @@ func (app *app) handlePostRoutes(w http.ResponseWriter, r *http.Request) {
 	// /post/{id}/edit
 	if matches := regexp.MustCompile(`^/post/(\d+)/edit$`).FindStringSubmatch(path); matches != nil {
 		app.editPost(w, r)
+		return
+	}
+
+	app.NotFound(w)
+}
+
+// handleCategoryRoutes обрабатывает динамические маршруты категорий
+func (app *app) handleCategoryRoutes(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	// /category/{slug}
+	if matches := regexp.MustCompile(`^/category/([a-z0-9-]+)$`).FindStringSubmatch(path); matches != nil {
+		app.viewCategory(w, r)
 		return
 	}
 

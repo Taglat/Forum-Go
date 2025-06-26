@@ -4,6 +4,17 @@
     <p>
         <b>Author:</b> {{.Username}} | <b>{{.Created.Format "02.01.2006 15:04"}}</b>
     </p>
+    
+    <!-- Показываем категории поста -->
+    {{if .Categories}}
+        <div class="post-categories">
+            <b>Категории:</b>
+            {{range $index, $category := .Categories}}
+                {{if $index}}, {{end}}<a href="/category/{{$category.Slug}}">{{$category.Name}}</a>
+            {{end}}
+        </div>
+    {{end}}
+    
     <div>
         {{if gt (len .Content) 200}}
             {{slice .Content 0 200}}...

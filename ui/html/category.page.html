@@ -1,0 +1,25 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="home-container container">
+    <h3>Title => {{.Title}}</h3>
+    <h3>Path => "{{.Path}}"</h3>
+    
+    <h2>Категория: {{.Category.Name}}</h2>
+    {{if .Category.Description}}
+        <p>{{.Category.Description}}</p>
+    {{end}}
+    
+    {{if .Posts}}
+        <div class="posts">
+            {{range .Posts}}
+                {{ template "postPartial" . }}
+            {{end}}
+        </div>
+    {{else}}
+        <p>В этой категории пока нет постов.</p>
+    {{end}}
+    
+    <p><a href="/categories" class="link">Все категории</a> | <a href="/" class="link">На главную</a></p>
+</div>
+{{end}}

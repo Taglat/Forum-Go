@@ -16,18 +16,60 @@ func (app *app) home(w http.ResponseWriter, r *http.Request) {
 
 	user := app.getCurrentUser(r)
 
-	// Получаем посты с пагинацией (пока без неё, возьмем последние 20)
-	posts, err := app.PostService.GetAllPosts(20, 0)
+	// Получаем параметр фильтра по категории
+	categorySlug := r.URL.Query().Get("category")
+
+	var posts []*models.Post
+	var err error
+
+	if categorySlug != "" {
+		// Получаем категорию по slug
+		category, err := app.CategoryService.GetCategoryBySlug(categorySlug)
+		if err != nil {
+			if err == database.ErrCategoryNotFound {
+				app.NotFound(w)
+				return
+			}
+			app.ServerError(w, err)
+			return
+		}
+
+		// Получаем посты этой категории
+		posts, err = app.CategoryService.GetCategoryPosts(category.ID, 20, 0)
+	} else {
+		// Получаем все посты
+		posts, err = app.PostService.GetAllPosts(20, 0)
+	}
+
 	if err != nil {
 		app.errorLog.Printf("Failed to get posts: %v", err)
-		posts = []*models.Post{} // пустой слайс при ошибке
+		posts = []*models.Post{}
+	}
+
+	// Для каждого поста получаем категории
+	for _, post := range posts {
+		categories, err := app.CategoryService.GetPostCategories(post.ID)
+		if err != nil {
+			app.errorLog.Printf("Failed to get categories for post %d: %v", post.ID, err)
+			categories = []*models.Category{}
+		}
+		post.Categories = categories
+	}
+
+	// Получаем все категории для фильтра
+	categories, err := app.CategoryService.GetAllCategories()
+	if err != nil {
+		app.errorLog.Printf("Failed to get categories: %v", err)
+		categories = []*models.Category{}
 	}
 
 	data := &HTMLData{
-		Title:       "Главная",
-		Path:        r.URL.Path,
-		CurrentUser: user,
-		Posts:       posts,
+		Title:          "Главная",
+		Path:           r.URL.Path,
+		CurrentUser:    user,
+		Posts:          posts,
+		Categories:     categories,
+		FilterCategory: categorySlug,
 	}
 
 	app.RenderHTML(w, r, "home.page.html", data)
@@ -165,11 +207,25 @@ func (app *app) profile(w http.ResponseWriter, r *http.Request) {
 
 // createPost создает новый пост
 func (app *app) createPost(w http.ResponseWriter, r *http.Request) {
+	user := app.getCurrentUser(r)
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Получаем все категории для формы
+	categories, err := app.CategoryService.GetAllCategories()
+	if err != nil {
+		app.errorLog.Printf("Failed to get categories: %v", err)
+		categories = []*models.Category{}
+	}
+
 	if r.Method != http.MethodPost {
 		data := &HTMLData{
 			Title:       "Создать пост",
 			Path:        r.URL.Path,
-			CurrentUser: app.getCurrentUser(r),
+			CurrentUser: user,
+			Categories:  categories,
 		}
 		app.RenderHTML(w, r, "create-post.page.html", data)
 		return
@@ -177,20 +233,28 @@ func (app *app) createPost(w http.ResponseWriter, r *http.Request) {
 
 	title := strings.TrimSpace(r.FormValue("title"))
 	content := strings.TrimSpace(r.FormValue("content"))
-	user := app.getCurrentUser(r)
 
-	if user == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
+	// Получаем выбранные категории
+	selectedCategories := r.Form["categories"]
+
+	var categoryIDs []int
+	for _, categoryIDStr := range selectedCategories {
+		categoryID, err := strconv.Atoi(categoryIDStr)
+		if err != nil {
+			continue
+		}
+		categoryIDs = append(categoryIDs, categoryID)
 	}
 
-	post, err := app.PostService.CreatePost(title, content, user.ID)
+	// Передаем categoryIDs в CreatePost
+	post, err := app.PostService.CreatePost(title, content, user.ID, categoryIDs)
 	if err != nil {
 		data := &HTMLData{
 			Title:       "Создать пост",
 			Path:        r.URL.Path,
 			FormError:   err.Error(),
 			CurrentUser: user,
+			Categories:  categories,
 			FormData: map[string]string{
 				"title":   title,
 				"content": content,
@@ -198,6 +262,19 @@ func (app *app) createPost(w http.ResponseWriter, r *http.Request) {
 		}
 		app.RenderHTML(w, r, "create-post.page.html", data)
 		return
+	}
+
+	// Привязываем пост к выбранным категориям
+	for _, categoryIDStr := range selectedCategories {
+		categoryID, err := strconv.Atoi(categoryIDStr)
+		if err != nil {
+			continue
+		}
+
+		if err := app.CategoryService.AssignPostToCategory(post.ID, categoryID); err != nil {
+			app.errorLog.Printf("Failed to assign post %d to category %d: %v",
+				post.ID, categoryID, err)
+		}
 	}
 
 	app.infoLog.Printf("Post created: ID=%d, Title=%q, Author=%q",
@@ -268,12 +345,28 @@ func (app *app) editPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Получаем все категории
+	allCategories, err := app.CategoryService.GetAllCategories()
+	if err != nil {
+		app.errorLog.Printf("Failed to get categories: %v", err)
+		allCategories = []*models.Category{}
+	}
+
+	// Получаем категории поста
+	postCategories, err := app.CategoryService.GetPostCategories(id)
+	if err != nil {
+		app.errorLog.Printf("Failed to get post categories: %v", err)
+		postCategories = []*models.Category{}
+	}
+
 	if r.Method != http.MethodPost {
 		data := &HTMLData{
-			Title:       "Редактировать пост",
-			Path:        r.URL.Path,
-			CurrentUser: user,
-			Post:        post,
+			Title:          "Редактировать пост",
+			Path:           r.URL.Path,
+			CurrentUser:    user,
+			Post:           post,
+			Categories:     allCategories,
+			PostCategories: postCategories,
 			FormData: map[string]string{
 				"title":   post.Title,
 				"content": post.Content,
@@ -285,15 +378,27 @@ func (app *app) editPost(w http.ResponseWriter, r *http.Request) {
 
 	title := strings.TrimSpace(r.FormValue("title"))
 	content := strings.TrimSpace(r.FormValue("content"))
+	selectedCategories := r.Form["categories"]
 
-	err = app.PostService.UpdatePost(id, title, content, user.ID)
+	var categoryIDs []int
+	for _, categoryIDStr := range selectedCategories {
+		categoryID, err := strconv.Atoi(categoryIDStr)
+		if err != nil {
+			continue
+		}
+		categoryIDs = append(categoryIDs, categoryID)
+	}
+
+	err = app.PostService.UpdatePost(id, title, content, categoryIDs, user.ID)
 	if err != nil {
 		data := &HTMLData{
-			Title:       "Редактировать пост",
-			Path:        r.URL.Path,
-			FormError:   err.Error(),
-			CurrentUser: user,
-			Post:        post,
+			Title:          "Редактировать пост",
+			Path:           r.URL.Path,
+			FormError:      err.Error(),
+			CurrentUser:    user,
+			Post:           post,
+			Categories:     allCategories,
+			PostCategories: postCategories,
 			FormData: map[string]string{
 				"title":   title,
 				"content": content,
@@ -301,6 +406,24 @@ func (app *app) editPost(w http.ResponseWriter, r *http.Request) {
 		}
 		app.RenderHTML(w, r, "edit-post.page.html", data)
 		return
+	}
+
+	// Удаляем все старые связи с категориями
+	for _, category := range postCategories {
+		app.CategoryService.RemovePostFromCategory(id, category.ID)
+	}
+
+	// Добавляем новые связи
+	for _, categoryIDStr := range selectedCategories {
+		categoryID, err := strconv.Atoi(categoryIDStr)
+		if err != nil {
+			continue
+		}
+
+		if err := app.CategoryService.AssignPostToCategory(id, categoryID); err != nil {
+			app.errorLog.Printf("Failed to assign post %d to category %d: %v",
+				id, categoryID, err)
+		}
 	}
 
 	app.infoLog.Printf("Post updated: ID=%d, Title=%q, Author=%q",
@@ -338,4 +461,63 @@ func (app *app) deletePost(w http.ResponseWriter, r *http.Request) {
 
 	app.infoLog.Printf("Post deleted: ID=%d, Author=%q", id, user.Username)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// categories - список всех категорий
+func (app *app) categories(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		app.MethodNotAllowed(w, []string{"GET"})
+		return
+	}
+
+	categories, err := app.CategoryService.GetAllCategories()
+	if err != nil {
+		app.ServerError(w, err)
+		return
+	}
+
+	data := &HTMLData{
+		Title:       "Категории",
+		Path:        r.URL.Path,
+		CurrentUser: app.getCurrentUser(r),
+		Categories:  categories,
+	}
+
+	app.RenderHTML(w, r, "categories.page.html", data)
+}
+
+// viewCategory - просмотр постов категории
+func (app *app) viewCategory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		app.MethodNotAllowed(w, []string{"GET"})
+		return
+	}
+
+	slug := strings.TrimPrefix(r.URL.Path, "/category/")
+
+	category, err := app.CategoryService.GetCategoryBySlug(slug)
+	if err != nil {
+		if err == database.ErrCategoryNotFound {
+			app.NotFound(w)
+			return
+		}
+		app.ServerError(w, err)
+		return
+	}
+
+	posts, err := app.CategoryService.GetCategoryPosts(category.ID, 20, 0)
+	if err != nil {
+		app.errorLog.Printf("Failed to get category posts: %v", err)
+		posts = []*models.Post{}
+	}
+
+	data := &HTMLData{
+		Title:       category.Name,
+		Path:        r.URL.Path,
+		CurrentUser: app.getCurrentUser(r),
+		Category:    category,
+		Posts:       posts,
+	}
+
+	app.RenderHTML(w, r, "category.page.html", data)
 }

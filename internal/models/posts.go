@@ -10,5 +10,6 @@ type Post struct {
 	Created time.Time // Дата создания
 	Updated time.Time // Дата изменения
 	// Данные автора (для JOIN запросов)
-	Username string // Имя автора
+	Username   string // Имя автора
+	Categories []*Category
 }

@@ -5,6 +5,15 @@
     <h3>Title => {{.Title}}</h3>
     <h3>Path => "{{.Path}}"</h3>
     
+    <!-- Фильтр по категориям -->
+    <div class="category-filter">
+        <h4>Фильтр по категориям:</h4>
+        <a href="/" class="btn {{if eq .FilterCategory ""}}active{{end}}">Все</a>
+        {{range .Categories}}
+            <a href="/?category={{.Slug}}" class="btn {{if eq $.FilterCategory .Slug}}active{{end}}">{{.Name}}</a>
+        {{end}}
+    </div>
+    
     {{if .Posts}}
         <div class="posts">
             {{range .Posts}}

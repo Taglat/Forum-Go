@@ -12,13 +12,17 @@ import (
 )
 
 type HTMLData struct {
-	Title       string
-	Path        string
-	FormError   string
-	FormData    map[string]string // для хранения введённых значений в форму
-	CurrentUser *models.User
-	Post        *models.Post
-	Posts       []*models.Post
+	Title          string
+	Path           string
+	CurrentUser    *models.User
+	Post           *models.Post
+	Posts          []*models.Post
+	Categories     []*models.Category
+	Category       *models.Category
+	PostCategories []*models.Category
+	FilterCategory string
+	FormError      string
+	FormData       map[string]string // для хранения введённых значений в форму
 }
 
 var functions = template.FuncMap{

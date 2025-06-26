@@ -14,6 +14,21 @@
     <form method="POST" action="/post/{{.Post.ID}}/edit" class="form">
         <input type="text" name="title" placeholder="Post Title" value="{{index .FormData "title"}}" required>
         <textarea name="content" placeholder="Содержимое поста" rows="10" required>{{index .FormData "content"}}</textarea>
+        
+        <!-- Выбор категорий -->
+        <div class="categories-select">
+            <h4>Категории:</h4>
+            {{$postCategories := .PostCategories}}
+            {{range .Categories}}
+                {{$categoryID := .ID}}
+                <label>
+                    <input type="checkbox" name="categories" value="{{.ID}}"
+                    {{range $postCategories}}{{if eq .ID $categoryID}}checked{{end}}{{end}}>
+                    {{.Name}}
+                </label>
+            {{end}}
+        </div>
+
         <button type="submit" class="btn">Edit</button>
     </form>
     

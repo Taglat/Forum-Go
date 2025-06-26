@@ -14,6 +14,18 @@
     <form method="POST" action="/post/create" class="form">
         <input type="text" name="title" placeholder="Post Title" value="{{index .FormData "title"}}" required>
         <textarea name="content" placeholder="Post content" rows="10" required>{{index .FormData "content"}}</textarea>
+        
+        <!-- Выбор категорий -->
+        <div class="categories-select">
+            <h4>Выберите категории:</h4>
+            {{range .Categories}}
+                <label>
+                    <input type="checkbox" name="categories" value="{{.ID}}">
+                    {{.Name}}
+                </label>
+            {{end}}
+        </div>
+        
         <button type="submit" class="btn">Create post</button>
     </form>
     

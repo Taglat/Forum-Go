@@ -30,21 +30,45 @@ func NewPostService(db *Database) *PostService {
 }
 
 // CreatePost создает новый пост
-func (ps *PostService) CreatePost(title, content string, userID int) (*models.Post, error) {
+func (ps *PostService) CreatePost(title, content string, userID int, categoryIDs []int) (*models.Post, error) {
 	if err := ps.validatePostData(title, content); err != nil {
 		return nil, err
 	}
 
+	// Начинаем транзакцию
+	tx, err := ps.db.DBConn.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("ошибка начала транзакции: %v", err)
+	}
+	defer tx.Rollback()
+
+	// Создаем пост
 	query := `INSERT INTO posts (title, content, user_id, created, updated) 
 			  VALUES (?, ?, ?, ?, ?) RETURNING id, created, updated`
 
 	var post models.Post
 	now := time.Now()
 
-	err := ps.db.DBConn.QueryRow(query, title, content, userID, now, now).Scan(
+	err = tx.QueryRow(query, title, content, userID, now, now).Scan(
 		&post.ID, &post.Created, &post.Updated)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrPostCreateFailed, err)
+	}
+
+	// Назначаем категории посту
+	if len(categoryIDs) > 0 {
+		categoryQuery := `INSERT INTO post_categories (post_id, category_id) VALUES (?, ?)`
+		for _, categoryID := range categoryIDs {
+			_, err = tx.Exec(categoryQuery, post.ID, categoryID)
+			if err != nil {
+				return nil, fmt.Errorf("ошибка назначения категории: %v", err)
+			}
+		}
+	}
+
+	// Подтверждаем транзакцию
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("ошибка подтверждения транзакции: %v", err)
 	}
 
 	post.Title = title
@@ -73,6 +97,14 @@ func (ps *PostService) GetPost(id int) (*models.Post, error) {
 		return nil, err
 	}
 
+	// Получаем категории
+	categoryService := NewCategoryService(ps.db)
+	categories, err := categoryService.GetPostCategories(post.ID)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка получения категорий поста %d: %v", post.ID, err)
+	}
+	post.Categories = categories
+
 	return &post, nil
 }
 
@@ -91,6 +123,8 @@ func (ps *PostService) GetAllPosts(limit, offset int) ([]*models.Post, error) {
 	defer rows.Close()
 
 	var posts []*models.Post
+	categoryService := NewCategoryService(ps.db)
+
 	for rows.Next() {
 		var post models.Post
 		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.UserID,
@@ -98,6 +132,14 @@ func (ps *PostService) GetAllPosts(limit, offset int) ([]*models.Post, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Получаем категории
+		categories, err := categoryService.GetPostCategories(post.ID)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка получения категорий поста %d: %v", post.ID, err)
+		}
+		post.Categories = categories
+
 		posts = append(posts, &post)
 	}
 
@@ -141,20 +183,51 @@ func (ps *PostService) GetUserPosts(userID int) ([]*models.Post, error) {
 }
 
 // UpdatePost обновляет пост (только автор может изменять)
-func (ps *PostService) UpdatePost(id int, title, content string, userID int) error {
+func (ps *PostService) UpdatePost(postID int, title, content string, categoryIDs []int, userID int) error {
 	if err := ps.validatePostData(title, content); err != nil {
 		return err
 	}
 
 	// Проверяем, что пользователь является автором поста
-	if !ps.isPostAuthor(id, userID) {
+	if !ps.isPostAuthor(postID, userID) {
 		return ErrNotPostAuthor
 	}
 
-	query := `UPDATE posts SET title = ?, content = ?, updated = ? WHERE id = ?`
-	_, err := ps.db.DBConn.Exec(query, title, content, time.Now(), id)
+	// Начинаем транзакцию
+	tx, err := ps.db.DBConn.Begin()
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrPostUpdateFailed, err)
+		return fmt.Errorf("ошибка начала транзакции: %v", err)
+	}
+	defer tx.Rollback()
+
+	// Обновляем пост
+	updatePostQuery := `UPDATE posts SET title = ?, content = ?, updated = ? WHERE id = ?`
+	_, err = tx.Exec(updatePostQuery, title, content, time.Now(), postID)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления поста: %v", err)
+	}
+
+	// Удаляем все существующие связи с категориями
+	deleteQuery := `DELETE FROM post_categories WHERE post_id = ?`
+	_, err = tx.Exec(deleteQuery, postID)
+	if err != nil {
+		return fmt.Errorf("ошибка удаления старых категорий: %v", err)
+	}
+
+	// Добавляем новые связи
+	if len(categoryIDs) > 0 {
+		insertQuery := `INSERT INTO post_categories (post_id, category_id) VALUES (?, ?)`
+		for _, categoryID := range categoryIDs {
+			_, err = tx.Exec(insertQuery, postID, categoryID)
+			if err != nil {
+				return fmt.Errorf("ошибка добавления категории: %v", err)
+			}
+		}
+	}
+
+	// Подтверждаем транзакцию
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("ошибка подтверждения транзакции: %v", err)
 	}
 
 	return nil

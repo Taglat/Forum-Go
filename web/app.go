@@ -11,14 +11,15 @@ import (
 )
 
 type app struct {
-	infoLog        *log.Logger
-	errorLog       *log.Logger
-	HTMLDir        *string
-	StaticDir      *string
-	Database       *database.Database
-	UserService    *database.UserService
-	SessionService *database.SessionService
-	PostService    *database.PostService
+	infoLog         *log.Logger
+	errorLog        *log.Logger
+	HTMLDir         *string
+	StaticDir       *string
+	Database        *database.Database
+	UserService     *database.UserService
+	SessionService  *database.SessionService
+	PostService     *database.PostService
+	CategoryService *database.CategoryService
 }
 
 func RunApp() {
@@ -49,16 +50,18 @@ func RunApp() {
 	userService := database.NewUserService(db)
 	sessionService := database.NewSessionService(db)
 	postService := database.NewPostService(db)
+	categoryService := database.NewCategoryService(db)
 
 	app := &app{
-		errorLog:       errorLog,
-		infoLog:        infoLog,
-		HTMLDir:        htmlDir,
-		StaticDir:      staticDir,
-		Database:       &database.Database{DBConn: dbConn},
-		UserService:    userService,
-		SessionService: sessionService,
-		PostService:    postService,
+		errorLog:        errorLog,
+		infoLog:         infoLog,
+		HTMLDir:         htmlDir,
+		StaticDir:       staticDir,
+		Database:        &database.Database{DBConn: dbConn},
+		UserService:     userService,
+		SessionService:  sessionService,
+		PostService:     postService,
+		CategoryService: categoryService,
 	}
 
 	if err := app.SessionService.CleanupExpiredSessions(); err != nil {
