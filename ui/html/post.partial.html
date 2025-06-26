@@ -1,0 +1,16 @@
+{{ define "postPartial" }}
+<div class="post">
+    <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+    <p>
+        <b>Author:</b> {{.Username}} | <b>{{.Created.Format "02.01.2006 15:04"}}</b>
+    </p>
+    <div>
+        {{if gt (len .Content) 200}}
+            {{slice .Content 0 200}}...
+        {{else}}
+            {{.Content}}
+        {{end}}
+    </div>
+    <a href="/post/{{.ID}}" class="btn">More...</a>
+</div>
+{{ end }}

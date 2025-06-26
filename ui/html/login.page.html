@@ -1,0 +1,22 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="home-container container">
+    <h3>Title => {{.Title}}</h3>
+    <h3>Path => "{{.Path}}"</h3>
+
+    {{if .FormError}}
+        <div class="error" style="color: red; margin-bottom: 1em;">
+            {{cap .FormError}}
+        </div>
+    {{end}}
+
+
+    <form method="POST" action="/login" class="form">
+        <input type="email" name="email" placeholder="Email" value="{{index .FormData "email"}}" class="input" required>
+        <input type="password" name="password" placeholder="Password" class="input" required>
+        <button type="submit" class="btn">Login</button>
+    </form>
+
+	<p>Don’t have an account? <a href="/register" class="link">Sign up</a></p>
+{{end}}

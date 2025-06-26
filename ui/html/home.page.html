@@ -1,0 +1,18 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="home-container container">
+    <h3>Title => {{.Title}}</h3>
+    <h3>Path => "{{.Path}}"</h3>
+    
+    {{if .Posts}}
+        <div class="posts">
+            {{range .Posts}}
+                {{ template "postPartial" . }}
+            {{end}}
+        </div>
+    {{else}}
+        <p>No posts yet.</p>
+    {{end}}
+</div>
+{{end}}

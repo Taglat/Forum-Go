@@ -1,0 +1,108 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+ul, li {
+    list-style: none;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+#body {
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+}
+
+.main {
+    flex-grow: 1;
+}
+
+.header, .footer {
+    background-color: #000;
+    color: #fff;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    max-width: 500px;
+    margin: 0 auto;
+    row-gap: 10px;
+}
+
+.header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn {
+    font-size: 16px;
+    display: inline-block;
+    padding: 4px 8px;
+    background-color: #fff;
+    color: #000;
+    border: 1px solid #000;
+    cursor: pointer;
+    text-align: center;
+    font-weight: bold;
+    width: fit-content;
+}
+
+.input {
+    border: 1px solid #000;
+    max-width: 300px;
+    padding: 4px 8px;
+}
+
+.link {
+    color: blue;
+    text-decoration: underline;
+}
+
+.posts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.post {
+    border: 1px solid black;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.post h3 {
+    margin-bottom: 10px;
+}
+
+.post .btns {
+    display: flex;
+    justify-content: space-between;
+}
+
+.delete-btn {
+    background-color: red;
+    color: #000;
+}

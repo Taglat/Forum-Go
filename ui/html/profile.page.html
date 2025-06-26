@@ -1,0 +1,13 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="home-container container">
+    <h3>Title => {{.Title}}</h3>
+    <h3>Path => "{{.Path}}"</h3>
+    <h3>Username => "{{.CurrentUser.Username}}"</h3>
+    <h3>ID => "{{.CurrentUser.ID}}"</h3>
+    <h3>Email => "{{.CurrentUser.Email}}"</h3>
+    <h3>Username => "{{.CurrentUser.Username}}"</h3>
+    <h3>Created Date => "{{.CurrentUser.Created | formatDate}}"</h3>
+</div>
+{{end}}

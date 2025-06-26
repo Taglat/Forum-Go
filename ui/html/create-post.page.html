@@ -1,0 +1,22 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="home-container container">
+    <h3>Title => {{.Title}}</h3>
+    <h3>Path => "{{.Path}}"</h3>
+    
+    {{if .FormError}}
+        <div class="error">
+            {{cap .FormError}}
+        </div>
+    {{end}}
+    
+    <form method="POST" action="/post/create" class="form">
+        <input type="text" name="title" placeholder="Post Title" value="{{index .FormData "title"}}" required>
+        <textarea name="content" placeholder="Post content" rows="10" required>{{index .FormData "content"}}</textarea>
+        <button type="submit" class="btn">Create post</button>
+    </form>
+    
+    <p><a href="/" class="link">To Home</a></p>
+</div>
+{{end}}
