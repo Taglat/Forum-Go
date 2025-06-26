@@ -66,3 +66,41 @@ INSERT OR IGNORE INTO categories (name, slug, description) VALUES
     ('Reviews & Recommendations', 'reviews', 'Tea reviews, tasting notes, and suggestions'),
     ('Teaware & Accessories', 'teaware', 'Teapots, gaiwans, cups, filters, and other tools'),
     ('Tea & Health', 'health', 'Health benefits, risks, and wellness tips related to tea');
+
+
+CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created);
+
+CREATE TABLE IF NOT EXISTS likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    post_id INTEGER,
+    comment_id INTEGER,
+    is_dislike BOOLEAN NOT NULL DEFAULT false,
+    created DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    -- Проверка что указан либо post_id, либо comment_id, но не оба
+    CHECK ((post_id IS NOT NULL AND comment_id IS NULL) OR (post_id IS NULL AND comment_id IS NOT NULL)),
+    -- Уникальность: один пользователь может поставить только один лайк/дизлайк на пост или комментарий
+    UNIQUE(user_id, post_id),
+    UNIQUE(user_id, comment_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_likes_post_id ON likes(post_id);
+CREATE INDEX IF NOT EXISTS idx_likes_comment_id ON likes(comment_id);
+CREATE INDEX IF NOT EXISTS idx_likes_created ON likes(created);
